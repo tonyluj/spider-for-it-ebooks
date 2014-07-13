@@ -47,7 +47,7 @@ class DB:
                      info)
             self.conn.commit()
         except:
-            print "DB Error " + info[0]
+            print "Empty Book from " + str(info[0])
 
     def close(self):
         self.conn.close()
@@ -117,10 +117,8 @@ class Books:
             book_info.append(description)
             print "get a book named " + title
             result =  tuple(book_info)
-        except TypeError:
-            print "Counld not be None"
         except:
-            print "Unknown error"
+            print "Not found that book"
         finally:
             return result
 
