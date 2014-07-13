@@ -42,9 +42,12 @@ class DB:
 
     def insert(self, info):
         c = self.conn.cursor()
-        c.execute('insert into books values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                 info)
-        self.conn.commit()
+        try:
+            c.execute('insert into books values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                     info)
+            self.conn.commit()
+        except:
+            print "DB Error"
 
     def close(self):
         self.conn.close()
@@ -84,43 +87,42 @@ class Books:
         if book_html is None:
             return
 
+        result = ()
         soup = BeautifulSoup(book_html)
+        try: 
+            # publisher, by, isbn, year, pages, language
+            content = []
+            for item in soup.find_all('b')[4:11]:
+                content.append(item.string)
+            extra_info = []
+            extra_info.append(content[0])
+            extra_info.extend(content[2:])
     
-        # publisher, by, isbn, year, pages, language
-        content = []
-        for item in soup.find_all('b')[4:11]:
-            content.append(item.string)
-        extra_info = []
-        extra_info.append(content[0])
-        extra_info.extend(content[2:])
+            # title
+            title = soup.title.string.split('-')[0].strip()
     
-        # title
-        title = soup.title.string.split('-')[0].strip()
+            # download url
+            download_url = ''
+            for item in soup.find_all('a'):
+                if item.string == title:
+                    download_url = item.get('href')
+                    break
     
-        # download url
-        download_url = ''
-        for item in soup.find_all('a'):
-            if item.string == title:
-                download_url = item.get('href')
-                break
-    
-        # description
-        description = soup.span.text
-        
-        # dict of book's info
-        # book_info = dict([['title', title],['publisher', book_info[0]],
-        #                 ['author', book_info[1]],['isbn', book_info[2]],
-        #                 ['year', book_info[3]],
-        #                 ['pages', book_info[4]],
-        #                 ['language', book_info[5]],
-        #                 ['download_url', download_url],
-        #                 ['description', description]])
-        book_info = [title]
-        book_info.extend(extra_info)
-        book_info.append(download_url)
-        book_info.append(description)
-        print "get a book named " + title
-        return tuple(book_info)
+            # description
+            description = soup.span.text
+            
+            book_info = [title]
+            book_info.extend(extra_info)
+            book_info.append(download_url)
+            book_info.append(description)
+            print "get a book named " + title
+            result =  tuple(book_info)
+        except TypeError:
+            print "Counld not be None"
+        else:
+            print "Unknown error"
+        finally:
+            return result
 
 
 class Spider:
