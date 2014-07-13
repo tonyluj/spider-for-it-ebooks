@@ -24,6 +24,7 @@ import sqlite3
 import requests
 from bs4 import BeautifulSoup
 from multiprocessing.dummy import Pool as ThreadPool
+import sys
 
 class Request:
     def __init__(self):
@@ -48,6 +49,14 @@ class DB:
             self.conn.commit()
         except:
             print "Empty Book from " + str(info[0])
+
+    def insert_html(self, book_html):
+        c = self.conn.cursor()
+        try:
+            c.execute('insert into book_html values (?, ?)',
+                      book_html)
+        except:
+            print "Empty Book html" + str(book_html[0])
 
     def close(self):
         self.conn.close()
@@ -158,5 +167,6 @@ class Spider:
         self.db.close()
 
 if __name__ == "__main__":
-    spider = Spider(start = 1, end = 10)
-    spider.begin()
+    if len(sys.argv) == 3:
+        spider = Spider()
+        spider.begin(start = int(sys.argv[1]), end = int(sys.argv[2]))
