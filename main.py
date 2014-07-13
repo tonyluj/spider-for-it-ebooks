@@ -47,7 +47,7 @@ class DB:
                      info)
             self.conn.commit()
         except:
-            print "DB Error"
+            print "DB Error " + info[0]
 
     def close(self):
         self.conn.close()
@@ -119,7 +119,7 @@ class Books:
             result =  tuple(book_info)
         except TypeError:
             print "Counld not be None"
-        else:
+        except:
             print "Unknown error"
         finally:
             return result
