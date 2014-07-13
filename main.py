@@ -124,14 +124,15 @@ class Books:
 
 
 class Spider:
-    def __init__(self, start = 1, end = 3549):
+    def __init__(self):
         self.req = Request()
         self.db = DB('books.db')
         self.book = Books()
-        self.start = start
-        self.end = end
+        self.start = 1
+        self.end = 3549
 
-    def begin(self):
+    def begin(self, start = 1, end = 3549):
+        self.start, self.end = start, end
         print "start analysising..."
         books, order_list = self.__get_book_info()
         print "get all books' info"
