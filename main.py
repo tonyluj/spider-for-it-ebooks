@@ -2,18 +2,18 @@
 # 
 # Copyright (C) 2014 copyright holder
 # 
-# This program is free software: you can redistribute it and/or modify
+# This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
+# the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
 # 
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 # GNU General Public License for more details.
 # 
 # You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 """
  This a spider for it-ebooks.
@@ -23,6 +23,7 @@
 import sqlite3
 import requests
 from bs4 import BeautifulSoup
+from multiprocessing.dummy import Pool as ThreadPool
 
 class Request:
     def __init__(self):
@@ -30,6 +31,7 @@ class Request:
 
     def get_book_html(self, id):
         res = requests.get(self.original_url + str(id) + '/')
+        print "get the " + str(id) + " book"
         return res.text
 
 
@@ -38,12 +40,10 @@ class DB:
     def __init__(self, url):
         self.conn = sqlite3.connect(url) 
 
-    def insert(self, info, id):
+    def insert(self, info):
         c = self.conn.cursor()
-        book_info = list(info)
-        book_info.insert(0, id)
         c.execute('insert into books values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                 book_info)
+                 info)
         self.conn.commit()
 
     def close(self):
@@ -58,11 +58,21 @@ class Books:
             book_info = self.__get_book_info(book_html)    
             self.books.append(book_info)
     
-    def add(self, book_html):
+    def add_book(self, book_html):
         self.books.append(self.__get_book_info(book_html))
+
+    def add_books(self, book_html_list):
+        """ add more than one books """
+        pool = ThreadPool(4)
+        results = pool.map(self.__get_book_info, book_html_list)
+        self.books.extend(results)
 
     def get(self):
         return self.books.pop()
+
+    def get_books(self):
+        """ return all the books """
+        return tuple(self.books)
 
     def __get_book_info(self, book_html):
         """ get book's info from html using BeautifulSoup 
@@ -109,19 +119,43 @@ class Books:
         book_info.extend(extra_info)
         book_info.append(download_url)
         book_info.append(description)
-
+        print "get a book named " + title
         return tuple(book_info)
 
 
-if __name__ == "__main__":
-    req = Request()
-    db = DB('books.db')
-    book = Books()
+class Spider:
+    def __init__(self, start = 1, end = 3549):
+        self.req = Request()
+        self.db = DB('books.db')
+        self.book = Books()
+        self.start = start
+        self.end = end
 
-    for i in xrange(1, 100):
-       book_html = req.get_book_html(i)
-       book.add(book_html)
-       book_info = book.get()
-       db.insert(book_info, i)
-       print "added " + str(i) + " book, name: " + book_info[0]
-    db.close()
+    def begin(self):
+        print "start analysising..."
+        books, order_list = self.__get_book_info()
+        print "get all books' info"
+        print "save to db..."
+        self.__insert_into_db(books, order_list)
+        print "done"
+
+    def __get_book_info(self):
+        pool = ThreadPool(4)
+        order_list = xrange(self.start, self.end)
+        results = pool.map(self.req.get_book_html, order_list)
+        print "get all books' html"
+        self.book.add_books(results)
+        pool.close()
+        pool.join()
+        return tuple(self.book.get_books()), order_list
+
+    def __insert_into_db(self, books, order_list):
+        for book, order in zip(books, order_list):
+            book_temp = list(book)
+            book_temp.insert(0, order)
+            self.db.insert(book_temp)
+        self.db.close()
+
+if __name__ == "__main__":
+    spider = Spider(start = 1, end = 10)
+    spider.begin()
